@@ -42,6 +42,7 @@ NachOSThread::NachOSThread(char* threadName)
     status = JUST_CREATED;
 #ifdef USER_PROGRAM
     space = NULL;
+    stateRestored = true;
 #endif
 
     threadArray[thread_index] = this;
@@ -76,7 +77,7 @@ NachOSThread::NachOSThread(char* threadName)
 
 NachOSThread::~NachOSThread()
 {
-    DEBUG('t', "Deleting thread \"%s\"\n", name);
+    DEBUG('t', "Deleting thread \"%s\" with pid %d\n", name, pid);
 
     ASSERT(this != currentThread);
     if (stack != NULL)
@@ -106,8 +107,8 @@ NachOSThread::~NachOSThread()
 void 
 NachOSThread::ThreadFork(VoidFunctionPtr func, int arg)
 {
-    DEBUG('t', "Forking thread \"%s\" with func = 0x%x, arg = %d\n",
-	  name, (int) func, arg);
+    DEBUG('t', "Forking thread \"%s\" with pid %d with func = 0x%x, arg = %d\n",
+	  name, pid, (int) func, arg);
     
     AllocateThreadStack(func, arg);
 
@@ -165,7 +166,7 @@ NachOSThread::FinishThread ()
     (void) interrupt->SetLevel(IntOff);		
     ASSERT(this == currentThread);
     
-    DEBUG('t', "Finishing thread \"%s\"\n", getName());
+    DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
     
     threadToBeDestroyed = currentThread;
     PutThreadToSleep();					// invokes SWITCH
@@ -213,7 +214,7 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
     (void) interrupt->SetLevel(IntOff);
     ASSERT(this == currentThread);
 
-    DEBUG('t', "Finishing thread \"%s\"\n", getName());
+    DEBUG('t', "Finishing thread \"%s\" with pid %d\n", getName(), pid);
 
     threadToBeDestroyed = currentThread;
 
@@ -267,7 +268,7 @@ NachOSThread::YieldCPU ()
     
     ASSERT(this == currentThread);
     
-    DEBUG('t', "Yielding thread \"%s\"\n", getName());
+    DEBUG('t', "Yielding thread \"%s\" with pid %d\n", getName(), pid);
     
     nextThread = scheduler->FindNextThreadToRun();
     if (nextThread != NULL) {
@@ -304,7 +305,7 @@ NachOSThread::PutThreadToSleep ()
     ASSERT(this == currentThread);
     ASSERT(interrupt->getLevel() == IntOff);
     
-    DEBUG('t', "Sleeping thread \"%s\"\n", getName());
+    DEBUG('t', "Sleeping thread \"%s\" with pid %d\n", getName(), pid);
 
     status = BLOCKED;
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)
@@ -386,8 +387,11 @@ NachOSThread::AllocateThreadStack (VoidFunctionPtr func, int arg)
 void
 NachOSThread::SaveUserState()
 {
-    for (int i = 0; i < NumTotalRegs; i++)
-	userRegisters[i] = machine->ReadRegister(i);
+    if (stateRestored) {
+       for (int i = 0; i < NumTotalRegs; i++)
+	   userRegisters[i] = machine->ReadRegister(i);
+       stateRestored = false;
+    }
 }
 
 //----------------------------------------------------------------------
@@ -404,6 +408,7 @@ NachOSThread::RestoreUserState()
 {
     for (int i = 0; i < NumTotalRegs; i++)
 	machine->WriteRegister(i, userRegisters[i]);
+    stateRestored = true;
 }
 #endif
 

@@ -53,7 +53,7 @@ NachOSscheduler::~NachOSscheduler()
 void
 NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
 {
-    DEBUG('t', "Putting thread %s on ready list.\n", thread->getName());
+    DEBUG('t', "Putting thread %s with PID %d on ready list.\n", thread->getName(), thread->GetPID());
 
     thread->setStatus(READY);
     readyThreadList->Append((void *)thread);
@@ -105,8 +105,8 @@ NachOSscheduler::Schedule (NachOSThread *nextThread)
     currentThread = nextThread;		    // switch to the next thread
     currentThread->setStatus(RUNNING);      // nextThread is now running
     
-    DEBUG('t', "Switching from thread \"%s\" to thread \"%s\"\n",
-	  oldThread->getName(), nextThread->getName());
+    DEBUG('t', "Switching from thread \"%s\" with pid %d to thread \"%s\" with pid %d\n",
+	  oldThread->getName(), oldThread->GetPID(), nextThread->getName(), nextThread->GetPID());
     
     // This is a machine-dependent assembly language routine defined 
     // in switch.s.  You may have to think
@@ -115,7 +115,7 @@ NachOSscheduler::Schedule (NachOSThread *nextThread)
 
     _SWITCH(oldThread, nextThread);
     
-    DEBUG('t', "Now in thread \"%s\"\n", currentThread->getName());
+    DEBUG('t', "Now in thread \"%s\" with pid %d\n", currentThread->getName(), currentThread->GetPID());
 
     // If the old thread gave up the processor because it was finishing,
     // we need to delete its carcass.  Note we cannot delete the thread
