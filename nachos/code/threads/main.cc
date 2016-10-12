@@ -60,6 +60,7 @@ extern void ThreadTest(void), Copy(char *unixFile, char *nachosFile);
 extern void Print(char *file), PerformanceTest(void);
 extern void StartUserProcess(char *file), ConsoleTest(char *in, char *out);
 extern void MailTest(int networkID);
+extern void ExecFileCommands(char *filename);
 
 //----------------------------------------------------------------------
 // main
@@ -94,10 +95,16 @@ main(int argc, char **argv)
             printf (copyright);
 #ifdef USER_PROGRAM
         if (!strcmp(*argv, "-x")) {        	// run a user program
-	    ASSERT(argc > 1);
+	    	ASSERT(argc > 1);
             StartUserProcess(*(argv + 1));
             argCount = 2;
-        } else if (!strcmp(*argv, "-c")) {      // test the console
+        }
+        else if (!strcmp(*argv, "-F")) {        	// run a user program
+	    	ASSERT(argc > 1);
+            ExecFileCommands(*(argv + 1));
+            argCount = 2;
+        }
+        else if (!strcmp(*argv, "-c")) {      // test the console
 	    if (argc == 1)
 	        ConsoleTest(NULL, NULL);
 	    else {

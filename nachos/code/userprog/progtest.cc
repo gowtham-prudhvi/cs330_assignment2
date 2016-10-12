@@ -82,3 +82,48 @@ ConsoleTest (char *in, char *out)
 	if (ch == 'q') return;  // if q, quit
     }
 }
+
+void
+ExecIndCommands(char *executable, int priority) {
+
+}
+
+void
+ExecFileCommands (char *filename)
+{
+    OpenFile *dataFile = fileSystem->Open(filename);
+    int lengthOfFile = dataFile->Length();
+
+    char data[lengthOfFile];
+    int outLength = dataFile->Read(data, lengthOfFile);
+    ASSERT(outLength == lengthOfFile);
+    int i = 0;
+    while (i < lengthOfFile) {
+        char execFile[50];
+        char priority[4];
+        
+        int j = 0;
+        while (data[i] != ' ') {
+            //printf("%c",data[i] );
+            execFile[j] = data[i];
+            j++;
+            i++;
+            if (!(i < lengthOfFile))
+                break;
+        }
+        i++;
+        if (!(i < lengthOfFile))
+                break;
+        j = 0;
+        while (data[i] != '\n') {
+            priority[j] = data[i];
+            j++;
+            i++;
+            if (!(i < lengthOfFile))
+                break;
+        }
+        int priority_val = atoi(priority);
+        ExecIndCommands(execFile, priority_val);
+    }
+    delete dataFile;
+}
