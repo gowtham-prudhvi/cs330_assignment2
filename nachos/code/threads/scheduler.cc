@@ -59,6 +59,14 @@ NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
     readyThreadList->Append((void *)thread);
 }
 
+void
+NachOSscheduler::ThreadIsReadyToRunPriority (NachOSThread *thread,int priority)
+{
+    DEBUG('t', "Putting thread %s with PID %d on ready list.\n", thread->getName(), thread->GetPID());
+
+    thread->setStatus(READY);
+    readyThreadList->SortedInsert((void*)thread, priority);
+}
 //----------------------------------------------------------------------
 // NachOSscheduler::FindNextThreadToRun
 // 	Return the next thread to be scheduled onto the CPU.

@@ -13,6 +13,8 @@
 #include "console.h"
 #include "addrspace.h"
 #include "synch.h"
+#include "syscall.h"
+#include "scheduler.h"
 
 //----------------------------------------------------------------------
 // StartUserProcess
@@ -84,8 +86,23 @@ ConsoleTest (char *in, char *out)
 }
 
 void
-ExecIndCommands(char *executable, int priority) {
+ExecIndCommands(char *filename, int priority) {
+    OpenFile *executable = fileSystem->Open(filename);
+    if (executable == NULL) {
+        printf("Unable to open file %s\n", filename);
+        return;
+    }
 
+    NachOSThread *currThread = new NachOSThread(filename, priority);
+    ProcessAddrSpace *space = new ProcessAddrSpace(executable);
+    currThread->space = space;
+
+    delete executable;          // close file
+
+    currThread->space->InitUserCPURegisters();      // set the initial register values
+    currThread->space->RestoreStateOnSwitch();      // load page table register
+
+    scheduler->ThreadIsReadyToRunPriority(currThread, priority);
 }
 
 void
@@ -99,31 +116,50 @@ ExecFileCommands (char *filename)
     ASSERT(outLength == lengthOfFile);
     int i = 0;
     while (i < lengthOfFile) {
-        char execFile[50];
-        char priority[4];
+        char execFileTemp[50];
+        char priority[5];
         
         int j = 0;
-        while (data[i] != ' ') {
-            //printf("%c",data[i] );
-            execFile[j] = data[i];
+        while (data[i] != ' ' && data[i] != '\n') {
+            execFileTemp[j] = data[i];
+            printf("%c", execFileTemp[j]);
             j++;
             i++;
-            if (!(i < lengthOfFile))
+            if (!(i < lengthOfFile)) {
                 break;
+            }
         }
-        i++;
-        if (!(i < lengthOfFile))
-                break;
-        j = 0;
-        while (data[i] != '\n') {
-            priority[j] = data[i];
-            j++;
+        
+        char execFile[j];
+        for (int k = 0; k < j; k++) {
+            execFile[k] = execFileTemp[k];
+        }
+
+        if (data[i] == '\n')
+        {
+            execFile[j] = '\0';
             i++;
-            if (!(i < lengthOfFile))
-                break;
+            priority = "100";   // if priority is not mentioned default = 100
+        }
+        else {
+            i++;
+            if (!(i < lengthOfFile)) {
+                    break;
+            }
+            j = 0;
+            while (data[i] != '\n') {
+                priority[j] = data[i];
+                j++;
+                i++;
+                if (!(i < lengthOfFile)) {
+                    break;
+                }
+            }
+            // priority[j] = '\0';
         }
         int priority_val = atoi(priority);
         ExecIndCommands(execFile, priority_val);
     }
     delete dataFile;
+    system_call_Exit(0);
 }

@@ -135,6 +135,9 @@ class NachOSThread {
     void IncInstructionCount();
     unsigned GetInstructionCount();
 
+    static int numThreads;
+    int priotity;
+
   private:
     // some of the private data for this class is listed above
     

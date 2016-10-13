@@ -24,6 +24,9 @@
 					// execution stack, for detecting 
 					// stack overflows
 
+int
+NachOSThread::numThreads = 0;
+
 //----------------------------------------------------------------------
 // NachOSThread::NachOSThread
 // 	Initialize a thread control block, so that we can then call
@@ -59,6 +62,45 @@ NachOSThread::NachOSThread(char* threadName)
     waitchild_id = -1;
 
     for (i=0; i<MAX_CHILD_COUNT; i++) exitedChild[i] = false;
+
+    priority = 50;
+    numThreads++;
+
+    instructionCount = 0;
+}
+
+// New constructor with priority of the thread
+
+NachOSThread::NachOSThread(char* threadName, int newPriority)
+{
+    int i;
+
+    name = threadName;
+    stackTop = NULL;
+    stack = NULL;
+    status = JUST_CREATED;
+#ifdef USER_PROGRAM
+    space = NULL;
+    stateRestored = true;
+#endif
+
+    threadArray[thread_index] = this;
+    pid = thread_index;
+    thread_index++;
+    ASSERT(thread_index < MAX_THREAD_COUNT);
+    if (currentThread != NULL) {
+       ppid = currentThread->GetPID();
+       currentThread->RegisterNewChild (pid);
+    }
+    else ppid = -1;
+
+    childcount = 0;
+    waitchild_id = -1;
+
+    for (i=0; i<MAX_CHILD_COUNT; i++) exitedChild[i] = false;
+
+    priority = 50 + newPriority;
+    numThreads++;
 
     instructionCount = 0;
 }

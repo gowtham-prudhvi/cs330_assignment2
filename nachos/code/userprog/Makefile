@@ -317,7 +317,7 @@ progtest.o: ../userprog/progtest.cc /usr/include/stdc-predef.h \
  ../filesys/openfile.h ../threads/scheduler.h ../threads/list.h \
  ../machine/interrupt.h ../threads/list.h ../machine/stats.h \
  ../machine/timer.h ../machine/console.h ../userprog/addrspace.h \
- ../threads/synch.h
+ ../threads/synch.h ../userprog/syscall.h ../threads/scheduler.h
 console.o: ../machine/console.cc /usr/include/stdc-predef.h \
  ../threads/copyright.h ../machine/console.h ../threads/utility.h \
  ../threads/copyright.h ../machine/sysdep.h /usr/include/stdio.h \
