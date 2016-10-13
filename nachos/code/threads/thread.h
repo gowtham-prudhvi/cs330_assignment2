@@ -83,7 +83,8 @@ class NachOSThread {
     int machineState[MachineStateSize];  // all registers except for stackTop
 
   public:
-    NachOSThread(char* debugName);		// initialize a Thread 
+    NachOSThread(char* debugName);	// initialize a Thread
+    NachOSThread(char* debugName,int newPriority); // initialize a Thread with priority
     ~NachOSThread(); 				// deallocate a Thread
 					// NOTE -- thread being deleted
 					// must not be running when delete 
@@ -104,7 +105,6 @@ class NachOSThread {
                                                 // Exit, in which case the
                                                 // simulation should be
                                                 // terminated.
-   
     void CheckOverflow();   			// Check if thread has 
 						// overflowed its stack
     void setStatus(ThreadStatus st) { status = st; }
@@ -136,7 +136,7 @@ class NachOSThread {
     unsigned GetInstructionCount();
 
     static int numThreads;
-    int priotity;
+    int priority;
 
   private:
     // some of the private data for this class is listed above

@@ -85,6 +85,15 @@ ConsoleTest (char *in, char *out)
     }
 }
 
+
+void
+ForkStartFunctionBatch (int dummy)
+{
+   currentThread->Startup();
+   machine->Run();
+}
+
+
 void
 ExecIndCommands(char *filename, int priority) {
     OpenFile *executable = fileSystem->Open(filename);
@@ -101,8 +110,9 @@ ExecIndCommands(char *filename, int priority) {
 
     currThread->space->InitUserCPURegisters();      // set the initial register values
     currThread->space->RestoreStateOnSwitch();      // load page table register
-
-    scheduler->ThreadIsReadyToRunPriority(currThread, priority);
+    currThread->SaveUserState();
+    currThread->AllocateThreadStack(ForkStartFunctionBatch,0);
+    currThread->Schedule();
 }
 
 void
@@ -122,7 +132,7 @@ ExecFileCommands (char *filename)
         int j = 0;
         while (data[i] != ' ' && data[i] != '\n') {
             execFileTemp[j] = data[i];
-            printf("%c", execFileTemp[j]);
+            //printf("%c", execFileTemp[j]);
             j++;
             i++;
             if (!(i < lengthOfFile)) {
@@ -137,29 +147,47 @@ ExecFileCommands (char *filename)
 
         if (data[i] == '\n')
         {
-            execFile[j] = '\0';
+           execFile[j] = '\0';
             i++;
-            priority = "100";   // if priority is not mentioned default = 100
+            priority[0] = '1';   // if priority is not mentioned default = 100
+            priority[1] = '0';
+            priority[2] = '0';
+            priority[3]='\0';
+            //j=0;
         }
         else {
             i++;
             if (!(i < lengthOfFile)) {
                     break;
             }
-            j = 0;
+            int l = 0;
             while (data[i] != '\n') {
-                priority[j] = data[i];
-                j++;
+                priority[l] = data[i];
+                l++;
                 i++;
                 if (!(i < lengthOfFile)) {
                     break;
                 }
             }
+            if (data[i] == '\n')
+        {
+           execFile[j] = '\0';
+            i++;
+            //j=0;
+        }
             // priority[j] = '\0';
         }
         int priority_val = atoi(priority);
         ExecIndCommands(execFile, priority_val);
     }
     delete dataFile;
-    system_call_Exit(0);
+    //printf("ppid=%d\n",currentThread->GetPPID());
+    //currentThread->Exit(false,0);
+    exitThreadArray[currentThread->GetPID()] = true;
+
+       // Find out if all threads have called exit
+       for (i=0; i<thread_index; i++) {
+          if (!exitThreadArray[i]) break;
+       }
+       currentThread->Exit(i==thread_index, 0);
 }

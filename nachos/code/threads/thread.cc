@@ -263,7 +263,7 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
     NachOSThread *nextThread;
 
     status = BLOCKED;
-
+    printf("ppidfromExit=%d\n",ppid);
     // Set exit code in parent's structure provided the parent hasn't exited
     if (ppid != -1) {
        ASSERT(threadArray[ppid] != NULL);
