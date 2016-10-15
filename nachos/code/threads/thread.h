@@ -92,6 +92,16 @@ class NachOSThread {
 
     // basic thread operations
 
+
+    int cpu_burst_sum=0;
+    int cpu_burst_count=0;
+    int curr_cpu_burst_start=0;
+
+    int prev_cpu_burst=0;
+    double prev_expected_cpu_burst=0.0;
+    
+
+
     void ThreadFork(VoidFunctionPtr func, int arg); 	// Make thread run (*func)(arg)
     void YieldCPU();  				// Relinquish the CPU if any 
 						// other thread is runnable

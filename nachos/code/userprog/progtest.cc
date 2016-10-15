@@ -119,35 +119,45 @@ void
 ExecFileCommands (char *filename)
 {
     OpenFile *dataFile = fileSystem->Open(filename);
+
+    if (dataFile == NULL) {
+        printf("Unable to open file %s\n", filename);
+        return;
+    }
+
     int lengthOfFile = dataFile->Length();
 
     char data[lengthOfFile];
     int outLength = dataFile->Read(data, lengthOfFile);
     ASSERT(outLength == lengthOfFile);
-    int i = 0;
+    
+    int i = 0, j = 0;
+    char execFile[50];
+    char priority[5];
+    char schedCode[5];
+
+    // first line is for schedulerCode
+    while (i < lengthOfFile && data[i] != '\n') {
+        schedCode[j] = data[i];
+        i++;
+        j++;
+    }
+    schedCode[j] = '\0';
+    scheduler->schedulerCode = atoi(schedCode);
+
+    i++;
     while (i < lengthOfFile) {
-        char execFileTemp[50];
-        char priority[5];
-        
-        int j = 0;
-        while (data[i] != ' ' && data[i] != '\n') {
-            execFileTemp[j] = data[i];
+        j = 0;
+        while (i < lengthOfFile && data[i] != ' ' && data[i] != '\n') {
+            execFile[j] = data[i];
             //printf("%c", execFileTemp[j]);
             j++;
             i++;
-            if (!(i < lengthOfFile)) {
-                break;
-            }
         }
-        
-        char execFile[j];
-        for (int k = 0; k < j; k++) {
-            execFile[k] = execFileTemp[k];
-        }
+        execFile[j] = '\0';
 
         if (data[i] == '\n')
         {
-           execFile[j] = '\0';
             i++;
             priority[0] = '1';   // if priority is not mentioned default = 100
             priority[1] = '0';
@@ -157,37 +167,28 @@ ExecFileCommands (char *filename)
         }
         else {
             i++;
-            if (!(i < lengthOfFile)) {
-                    break;
-            }
-            int l = 0;
-            while (data[i] != '\n') {
-                priority[l] = data[i];
-                l++;
+            j = 0;
+            
+            while (i < lengthOfFile && data[i] != '\n') {
+                priority[j] = data[i];
+                j++;
                 i++;
-                if (!(i < lengthOfFile)) {
-                    break;
-                }
             }
-            if (data[i] == '\n')
-        {
-           execFile[j] = '\0';
-            i++;
-            //j=0;
-        }
             // priority[j] = '\0';
         }
+        i++;    // next line
         int priority_val = atoi(priority);
         ExecIndCommands(execFile, priority_val);
     }
     delete dataFile;
-    //printf("ppid=%d\n",currentThread->GetPPID());
-    //currentThread->Exit(false,0);
+
+    //code from system call Exit
+    
     exitThreadArray[currentThread->GetPID()] = true;
 
-       // Find out if all threads have called exit
-       for (i=0; i<thread_index; i++) {
-          if (!exitThreadArray[i]) break;
-       }
-       currentThread->Exit(i==thread_index, 0);
+    // Find out if all threads have called exit
+    for (i=0; i<thread_index; i++) {
+        if (!exitThreadArray[i]) break;
+    }
+    currentThread->Exit(i==thread_index, 0);
 }

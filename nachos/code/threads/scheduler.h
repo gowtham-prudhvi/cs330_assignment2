@@ -23,13 +23,15 @@ class NachOSscheduler {
     ~NachOSscheduler();			// De-allocate ready list
 
     void ThreadIsReadyToRun(NachOSThread* thread);	// Thread can be dispatched.
-    void ThreadIsReadyToRunPriority(NachOSThread* thread,int priority);  // Thread can be dispatched.
     NachOSThread* FindNextThreadToRun();		// Dequeue first thread on the ready 
 					// list, if any, and return thread.
     void Schedule(NachOSThread* nextThread);	// Cause nextThread to start running
     void Print();			// Print contents of ready list
     
     void Tail();                        // Used by fork()
+
+    double alpha;   // SJF estimation
+    int schedulerCode = 1;
 
   private:
     List *readyThreadList;  		// queue of threads that are ready to run,

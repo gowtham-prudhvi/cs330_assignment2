@@ -29,7 +29,10 @@
 
 NachOSscheduler::NachOSscheduler()
 { 
-    readyThreadList = new List; 
+    readyThreadList = new List;
+
+    //SJF
+    alpha = 0.5; 
 } 
 
 //----------------------------------------------------------------------
@@ -56,17 +59,28 @@ NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
     DEBUG('t', "Putting thread %s with PID %d on ready list.\n", thread->getName(), thread->GetPID());
 
     thread->setStatus(READY);
-    readyThreadList->Append((void *)thread);
+
+    // SJF and non zero cpu burst
+    if (schedulerCode == 2 && thread->prev_cpu_burst > 0) {
+        double expected_cpu_burst = alpha * thread->prev_cpu_burst + (1 - alpha) * thread->prev_expected_cpu_burst;
+
+        int error = thread->prev_cpu_burst - expected_cpu_burst;
+
+        if (error < 0)
+            error = -1 * error;
+
+        // TODO: report stats-error
+
+        //update prev_expected_cpu_burst
+        thread->prev_expected_cpu_burst = expected_cpu_burst;
+
+        // Insert the thread into the List using expected_cpu_burst
+        readyThreadList->SortedInsert((void*)thread, expected_cpu_burst);
+    }
+    else
+        readyThreadList->Append((void *)thread);
 }
 
-void
-NachOSscheduler::ThreadIsReadyToRunPriority (NachOSThread *thread,int priority)
-{
-    DEBUG('t', "Putting thread %s with PID %d on ready list.\n", thread->getName(), thread->GetPID());
-
-    thread->setStatus(READY);
-    readyThreadList->SortedInsert((void*)thread, priority);
-}
 //----------------------------------------------------------------------
 // NachOSscheduler::FindNextThreadToRun
 // 	Return the next thread to be scheduled onto the CPU.
@@ -78,7 +92,12 @@ NachOSscheduler::ThreadIsReadyToRunPriority (NachOSThread *thread,int priority)
 NachOSThread *
 NachOSscheduler::FindNextThreadToRun ()
 {
-    return (NachOSThread *)readyThreadList->Remove();
+    // default except for UNIX scheduling
+    if (schedulerCode <= 6)
+        return (NachOSThread *)readyThreadList->Remove();
+    else {
+        // TODO:
+    }
 }
 
 //----------------------------------------------------------------------
@@ -112,6 +131,10 @@ NachOSscheduler::Schedule (NachOSThread *nextThread)
 
     currentThread = nextThread;		    // switch to the next thread
     currentThread->setStatus(RUNNING);      // nextThread is now running
+
+    nextThread->curr_cpu_burst_start=stats->totalTicks;
+    currentThread->cpu_burst_count++;
+    printf("cpu_start=%d count=%d\t", currentThread->curr_cpu_burst_start,currentThread->cpu_burst_count);
     
     DEBUG('t', "Switching from thread \"%s\" with pid %d to thread \"%s\" with pid %d\n",
 	  oldThread->getName(), oldThread->GetPID(), nextThread->getName(), nextThread->GetPID());

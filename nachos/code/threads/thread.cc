@@ -119,11 +119,12 @@ NachOSThread::NachOSThread(char* threadName, int newPriority)
 
 NachOSThread::~NachOSThread()
 {
-    DEBUG('t', "Deleting thread \"%s\" with pid %d\n", name, pid);
+  DEBUG('t', "Deleting thread \"%s\" with pid %d\n", name, pid);
 
-    ASSERT(this != currentThread);
-    if (stack != NULL)
-	DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
+  ASSERT(this != currentThread);
+  if (stack != NULL)
+    DeallocBoundedArray((char *) stack, StackSize * sizeof(int));
+  numThreads--;
 }
 
 //----------------------------------------------------------------------
@@ -263,13 +264,25 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
     NachOSThread *nextThread;
 
     status = BLOCKED;
-    printf("ppidfromExit=%d\n",ppid);
+    int burst_time=stats->totalTicks-currentThread->curr_cpu_burst_start;
+    currentThread->prev_cpu_burst = burst_time;
+    if(burst_time>0)
+    {
+        currentThread->cpu_burst_sum+=burst_time;
+        printf("cpuburstsumfrom exit=%d\n",currentThread->cpu_burst_sum);
+        
+    }
+    printf("pidfromExit=%d cpu_burst_sum=%d cpu_burst_count=%d\n",pid,cpu_burst_sum,cpu_burst_count);
     // Set exit code in parent's structure provided the parent hasn't exited
     if (ppid != -1) {
        ASSERT(threadArray[ppid] != NULL);
        if (!exitThreadArray[ppid]) {
           threadArray[ppid]->SetChildExitCode (pid, exitcode);
        }
+    }
+
+    if (numThreads == 1) {
+      interrupt->Halt();
     }
 
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL) {
@@ -312,10 +325,25 @@ NachOSThread::YieldCPU ()
     
     DEBUG('t', "Yielding thread \"%s\" with pid %d\n", getName(), pid);
     
+    int burst_time=stats->totalTicks-currentThread->curr_cpu_burst_start;
+    currentThread->prev_cpu_burst = burst_time;
+    if(burst_time>0)
+    {
+        currentThread->cpu_burst_sum+=burst_time;
+        printf("cpuburstsumfrom yield=%d cpu_start=%d\n currtime=%d",currentThread->cpu_burst_sum,curr_cpu_burst_start,stats->totalTicks);
+        
+    }
+
     nextThread = scheduler->FindNextThreadToRun();
+
     if (nextThread != NULL) {
-	scheduler->ThreadIsReadyToRun(this);
-	scheduler->Schedule(nextThread);
+      scheduler->ThreadIsReadyToRun(this);
+      scheduler->Schedule(nextThread);
+    }
+    else
+    {
+      curr_cpu_burst_start=stats->totalTicks;
+      printf("null nooooo\n");
     }
     (void) interrupt->SetLevel(oldLevel);
 }
@@ -350,6 +378,13 @@ NachOSThread::PutThreadToSleep ()
     DEBUG('t', "Sleeping thread \"%s\" with pid %d\n", getName(), pid);
 
     status = BLOCKED;
+    int burst_time=stats->totalTicks-currentThread->curr_cpu_burst_start;
+    currentThread->prev_cpu_burst = burst_time;
+    if(burst_time>0)
+    {
+        currentThread->cpu_burst_sum+=burst_time;
+        printf("cpuburstsumfrom sleep=%d\n",currentThread->cpu_burst_sum);
+    }
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)
 	interrupt->Idle();	// no one to run, wait for an interrupt
         
