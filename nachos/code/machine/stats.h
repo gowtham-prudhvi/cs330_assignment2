@@ -36,6 +36,16 @@ class Statistics {
     int numPacketsSent;		// number of packets sent over the network
     int numPacketsRecvd;	// number of packets received over the network
 
+
+    //stats to display at the end
+
+    int cpu_burst_total=0;
+    int cpu_burst_count=0;
+    int cpu_burst_min=100000;
+    int cpu_burst_max=0;
+    int wait_time_total=0;
+    int wait_count=0;
+
     Statistics(); 		// initialize everything to zero
 
     void Print();		// print collected statistics

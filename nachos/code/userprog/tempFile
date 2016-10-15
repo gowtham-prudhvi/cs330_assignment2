@@ -1,4 +1,2 @@
-../test/printtest 90
-../test/vectorsum 50
-../test/forkjoin
-../test/vectorsum 70
+1
+../test/testloop

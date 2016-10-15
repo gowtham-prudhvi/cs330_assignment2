@@ -269,10 +269,21 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
     if(burst_time>0)
     {
         currentThread->cpu_burst_sum+=burst_time;
+        stats->cpu_burst_total+=burst_time;
+        stats->cpu_burst_count++;
+
+        if(burst_time<stats->cpu_burst_min)
+        {
+          stats->cpu_burst_min=burst_time;
+        }
+        if(burst_time>stats->cpu_burst_max)
+        {
+          stats->cpu_burst_max=burst_time;
+        }
         printf("cpuburstsumfrom exit=%d\n",currentThread->cpu_burst_sum);
         
     }
-    printf("pidfromExit=%d cpu_burst_sum=%d cpu_burst_count=%d\n",pid,cpu_burst_sum,cpu_burst_count);
+    printf("pidfromExit=%d cpu_burst_sum=%d cpu_burst_count=%d\n stats count=%d stats sum=%d",pid,cpu_burst_sum,cpu_burst_count,stats->cpu_burst_count,stats->cpu_burst_total);
     // Set exit code in parent's structure provided the parent hasn't exited
     if (ppid != -1) {
        ASSERT(threadArray[ppid] != NULL);
@@ -330,6 +341,17 @@ NachOSThread::YieldCPU ()
     if(burst_time>0)
     {
         currentThread->cpu_burst_sum+=burst_time;
+        stats->cpu_burst_total+=burst_time;
+        stats->cpu_burst_count++;
+
+        if(burst_time<stats->cpu_burst_min)
+        {
+          stats->cpu_burst_min=burst_time;
+        }
+        if(burst_time>stats->cpu_burst_max)
+        {
+          stats->cpu_burst_max=burst_time;
+        }
         printf("cpuburstsumfrom yield=%d cpu_start=%d\n currtime=%d",currentThread->cpu_burst_sum,curr_cpu_burst_start,stats->totalTicks);
         
     }
@@ -383,6 +405,17 @@ NachOSThread::PutThreadToSleep ()
     if(burst_time>0)
     {
         currentThread->cpu_burst_sum+=burst_time;
+        stats->cpu_burst_total+=burst_time;
+        stats->cpu_burst_count++;
+
+        if(burst_time<stats->cpu_burst_min)
+        {
+          stats->cpu_burst_min=burst_time;
+        }
+        if(burst_time>stats->cpu_burst_max)
+        {
+          stats->cpu_burst_max=burst_time;
+        }
         printf("cpuburstsumfrom sleep=%d\n",currentThread->cpu_burst_sum);
     }
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)
