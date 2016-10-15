@@ -96,7 +96,60 @@ NachOSscheduler::FindNextThreadToRun ()
     if (schedulerCode <= 6)
         return (NachOSThread *)readyThreadList->Remove();
     else {
-        // TODO:
+        // if readyList is empty return NULL
+        if (readyList->first == NULL)
+            return NULL;
+
+        // get the thread with minimum priority value
+        // scan the entire readyList and update minThreadPtr accordingly
+        ListElement *minElementPtr = readyList->first;
+
+        // temp variables are used to iterate through the readyList
+        ListElement *tempElementPtr = minThreadPtr;
+        Thread *tempThreadPtr = (Thread*)minElementPtr->item;
+        int tempPriorityValue = tempThreadPtr->priority;
+
+        Thread *minThreadPtr = temp;
+        int minPriorityValue =  minThreadPtr->priority;
+
+        // iterate through readyList
+        while (tempElementPtr != NULL) {
+            tempThreadPtr = (Thread*)tempElementPtr->item;
+            tempPriorityValue = tempThreadPtr->priority;
+
+            if (tempPriorityValue < minPriorityValue) {
+                minElementPtr = tempElementPtr;
+                minThreadPtr = tempThreadPtr;
+                minPriorityValue = tempPriorityValue;
+            }
+            tempElementPtr = tempElementPtr->next;
+        }
+
+        // remove the min element from readyList
+        tempElementPtr = readyList->first;
+        
+        // if the minThread is the first then directly use default Remove()
+        if (tempElementPtr == minElementPtr) {
+            return (Thread *)readyList->Remove();
+        }
+
+        ListElement *prevElementPtr = tempElementPtr;
+        tempElementPtr = tempElementPtr->next;
+        while(tempElementPtr != NULL) {
+            if(tempElementPtr == minElementPtr) {
+                prevElementPtr->next = tempElementPtr->next;
+
+                // if the min is last then update readyList last as prevElementPtr
+                if (tempElementPtr == readyList->last) {
+                    readyList->last = prevElementPtr;
+                }
+            }
+            prevElementPtr = tempElementPtr;
+            tempElementPtr = tempElementPtr->next;
+        }
+
+        delete minElementPtr;
+        return minThread;
     }
 }
 
