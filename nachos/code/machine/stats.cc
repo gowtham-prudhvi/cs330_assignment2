@@ -33,6 +33,27 @@ Statistics::Statistics()
 void
 Statistics::Print()
 {
+
+    double util = (systemTicks + userTicks)/(double)totalTicks;
+
+
+    avg_wait=wait_time_total/double(thread_count);
+    printf("\nThread Wait Statistics\n");
+    printf("Total wait time=%d\n",wait_time_total);
+    printf("Thread count =%d\n",thread_count);
+    printf("Average wait time %f\n", avg_wait);
+
+
+
+    printf("\nCPU Usage Statistics\n");
+    printf("Maximum CPU Burst %d\n", cpu_burst_max);
+    printf("Minimum CPU Burst %d\n", cpu_burst_min);
+    printf("CPU Burst count %d\n", cpu_burst_count);
+    printf("Total CPU Burst time %d\n", cpu_burst_total);
+    printf("CPU Utilization: %f\n", util);
+
+
+
     printf("Ticks: total %d, idle %d, system %d, user %d\n", totalTicks, 
 	idleTicks, systemTicks, userTicks);
     printf("Disk I/O: reads %d, writes %d\n", numDiskReads, numDiskWrites);

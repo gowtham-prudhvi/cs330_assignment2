@@ -16,6 +16,29 @@
 #include "syscall.h"
 #include "scheduler.h"
 
+// Timer *timer;
+
+static void
+TimerHandler(int dummy) {
+    TimeSortedWaitQueue *ptr;
+    if (interrupt->getStatus() != IdleMode) {
+        // Check the head of the sleep queue
+        while ((sleepQueueHead != NULL) && (sleepQueueHead->GetWhen() <= (unsigned)stats->totalTicks)) {
+           sleepQueueHead->GetThread()->Schedule();
+           ptr = sleepQueueHead;
+           sleepQueueHead = sleepQueueHead->GetNext();
+           delete ptr;
+        }
+        //printf("[%d] Timer interrupt.\n", stats->totalTicks);
+        // TODO: according to schedulerCode
+        if(scheduler->schedulerCode>=3)
+        {
+            currentThread->yieldAt=true;
+        interrupt->YieldOnReturn();
+        }   
+    }
+}
+
 //----------------------------------------------------------------------
 // StartUserProcess
 // 	Run a user program.  Open the executable, load it into
@@ -39,6 +62,8 @@ StartUserProcess(char *filename)
 
     space->InitUserCPURegisters();		// set the initial register values
     space->RestoreStateOnSwitch();		// load page table register
+
+    timer = new Timer(TimerHandler, 0, false, 100);
 
     machine->Run();			// jump to the user progam
     ASSERT(FALSE);			// machine->Run never returns;
@@ -113,6 +138,7 @@ ExecIndCommands(char *filename, int priority) {
     currThread->SaveUserState();
     currThread->AllocateThreadStack(ForkStartFunctionBatch,0);
     currThread->Schedule();
+    //printf("pid from prog=%d\n",currThread->GetPID());
 }
 
 void
@@ -145,6 +171,32 @@ ExecFileCommands (char *filename)
     schedCode[j] = '\0';
     scheduler->schedulerCode = atoi(schedCode);
 
+    // TODO: update quantum
+    int quantum = 100;
+    int schedulerType = scheduler->schedulerCode;
+    if (schedulerType <=2)
+        quantum = 100;
+    else if (schedulerType == 3)
+        quantum = 30;
+    else if (schedulerType == 4)
+        quantum = 60;
+    else if (schedulerType == 5)
+        quantum = 90;
+    else if (schedulerType == 6)
+        quantum = 30;
+    else if (schedulerType == 7)
+        quantum = 40;
+    else if (schedulerType == 8)
+        quantum = 70;
+    else if (schedulerType == 9)
+        quantum = 90;
+    else if (schedulerType == 10)
+        quantum = 40;
+    else
+        quantum = 100;
+
+    timer = new Timer(TimerHandler, 0 , false, quantum);
+
     i++;
     while (i < lengthOfFile) {
         j = 0;
@@ -158,7 +210,6 @@ ExecFileCommands (char *filename)
 
         if (data[i] == '\n')
         {
-            i++;
             priority[0] = '1';   // if priority is not mentioned default = 100
             priority[1] = '0';
             priority[2] = '0';

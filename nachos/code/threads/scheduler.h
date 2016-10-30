@@ -8,6 +8,7 @@
 
 #ifndef SCHEDULER_H
 #define SCHEDULER_H
+#define MAX_THREAD_COUNT 1000
 
 #include "copyright.h"
 #include "list.h"
@@ -32,6 +33,9 @@ class NachOSscheduler {
 
     double alpha;   // SJF estimation
     int schedulerCode = 1;
+
+    int quantum;
+    int cpuCount[MAX_THREAD_COUNT];
 
   private:
     List *readyThreadList;  		// queue of threads that are ready to run,

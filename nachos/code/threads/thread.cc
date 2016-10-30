@@ -65,7 +65,8 @@ NachOSThread::NachOSThread(char* threadName)
 
     priority = 50;
     numThreads++;
-
+    wait_time_sum = 0;
+    curr_wait_start = stats->totalTicks;
     instructionCount = 0;
 }
 
@@ -101,7 +102,8 @@ NachOSThread::NachOSThread(char* threadName, int newPriority)
 
     priority = 50 + newPriority;
     numThreads++;
-
+    wait_time_sum = 0;
+    curr_wait_start = stats->totalTicks;
     instructionCount = 0;
 }
 
@@ -266,24 +268,44 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
     status = BLOCKED;
     int burst_time=stats->totalTicks-currentThread->curr_cpu_burst_start;
     currentThread->prev_cpu_burst = burst_time;
-    if(burst_time>0)
-    {
-        currentThread->cpu_burst_sum+=burst_time;
-        stats->cpu_burst_total+=burst_time;
-        stats->cpu_burst_count++;
+    if(currentThread->GetPID() > 0) {
+      if(burst_time>0)
+      {   
+        stats->thread_count++;
 
-        if(burst_time<stats->cpu_burst_min)
-        {
-          stats->cpu_burst_min=burst_time;
-        }
-        if(burst_time>stats->cpu_burst_max)
-        {
-          stats->cpu_burst_max=burst_time;
-        }
-        printf("cpuburstsumfrom exit=%d\n",currentThread->cpu_burst_sum);
-        
+        stats->wait_time_total+=currentThread->wait_time_sum;
+          currentThread->cpu_burst_sum+=burst_time;
+          stats->cpu_burst_total+=burst_time;
+          stats->cpu_burst_count++;
+
+          if(burst_time<stats->cpu_burst_min)
+          {
+            stats->cpu_burst_min=burst_time;
+          }
+          if(burst_time>stats->cpu_burst_max)
+          {
+            stats->cpu_burst_max=burst_time;
+          }
+          //printf("cpuburstsumfrom exit=%d\n",currentThread->cpu_burst_sum);
+      }
     }
-    printf("pidfromExit=%d cpu_burst_sum=%d cpu_burst_count=%d\n stats count=%d stats sum=%d",pid,cpu_burst_sum,cpu_burst_count,stats->cpu_burst_count,stats->cpu_burst_total);
+
+    if (currentThread->prev_cpu_burst > 0) {
+      if (scheduler->schedulerCode >= 7 && scheduler->schedulerCode <= 10) {
+        int i;
+        int pid = currentThread->GetPID();
+
+        scheduler->cpuCount[pid] += currentThread->prev_cpu_burst;
+
+        for (i=0; i < MAX_THREAD_COUNT; i++) {
+          scheduler->cpuCount[i] = scheduler->cpuCount[i] / 2;
+          if (threadArray[i] != NULL)
+            threadArray[i]->priority += scheduler->cpuCount[i] / 2;
+        }
+      }
+    }
+
+    //printf("pidfromExit=%d cpu_burst_sum=%d cpu_burst_count=%d\n stats count=%d stats sum=%d",pid,cpu_burst_sum,cpu_burst_count,stats->cpu_burst_count,stats->cpu_burst_total);
     // Set exit code in parent's structure provided the parent hasn't exited
     if (ppid != -1) {
        ASSERT(threadArray[ppid] != NULL);
@@ -293,7 +315,8 @@ NachOSThread::Exit (bool terminateSim, int exitcode)
     }
 
     if (numThreads == 1) {
-      interrupt->Halt();
+      terminateSim=true;
+      //interrupt->Halt();
     }
 
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL) {
@@ -338,35 +361,60 @@ NachOSThread::YieldCPU ()
     
     int burst_time=stats->totalTicks-currentThread->curr_cpu_burst_start;
     currentThread->prev_cpu_burst = burst_time;
-    if(burst_time>0)
-    {
-        currentThread->cpu_burst_sum+=burst_time;
-        stats->cpu_burst_total+=burst_time;
-        stats->cpu_burst_count++;
+    if(currentThread->GetPID() > 0) {
+      if(burst_time>0)
+      {
+          currentThread->cpu_burst_sum+=burst_time;
+          stats->cpu_burst_total+=burst_time;
+          stats->cpu_burst_count++;
 
-        if(burst_time<stats->cpu_burst_min)
-        {
-          stats->cpu_burst_min=burst_time;
-        }
-        if(burst_time>stats->cpu_burst_max)
-        {
-          stats->cpu_burst_max=burst_time;
-        }
-        printf("cpuburstsumfrom yield=%d cpu_start=%d\n currtime=%d",currentThread->cpu_burst_sum,curr_cpu_burst_start,stats->totalTicks);
-        
+          if(burst_time<stats->cpu_burst_min)
+          {
+            stats->cpu_burst_min=burst_time;
+          }
+          if(burst_time>stats->cpu_burst_max)
+          {
+            stats->cpu_burst_max=burst_time;
+          }
+       //   printf("cpuburstsumfrom yield=%d cpu_start=%d\n currtime=%d",currentThread->cpu_burst_sum,curr_cpu_burst_start,stats->totalTicks);
+      }
     }
 
+    if (currentThread->prev_cpu_burst > 0) {
+      if (scheduler->schedulerCode >= 7 && scheduler->schedulerCode <= 10) {
+        int i;
+        int pid = currentThread->GetPID();
+
+        scheduler->cpuCount[pid] += currentThread->prev_cpu_burst;
+
+        for (i=0; i < MAX_THREAD_COUNT; i++) {
+          scheduler->cpuCount[i] = scheduler->cpuCount[i] / 2;
+          if (threadArray[i] != NULL)
+            threadArray[i]->priority += scheduler->cpuCount[i] / 2;
+        }
+      }
+    }
+    
+    if (yieldAt)
+    {
+      scheduler->ThreadIsReadyToRun(this);
+    }
     nextThread = scheduler->FindNextThreadToRun();
 
     if (nextThread != NULL) {
-      scheduler->ThreadIsReadyToRun(this);
+
+      if (yieldAt)
+      {
+        yieldAt=false;
+      }
+      else
+      {
+        scheduler->ThreadIsReadyToRun(this);
+      }
+      
       scheduler->Schedule(nextThread);
     }
-    else
-    {
-      curr_cpu_burst_start=stats->totalTicks;
-      printf("null nooooo\n");
-    }
+    curr_cpu_burst_start=stats->totalTicks;
     (void) interrupt->SetLevel(oldLevel);
 }
 
@@ -402,6 +450,7 @@ NachOSThread::PutThreadToSleep ()
     status = BLOCKED;
     int burst_time=stats->totalTicks-currentThread->curr_cpu_burst_start;
     currentThread->prev_cpu_burst = burst_time;
+    if(currentThread->GetPID() > 0) {
     if(burst_time>0)
     {
         currentThread->cpu_burst_sum+=burst_time;
@@ -416,8 +465,9 @@ NachOSThread::PutThreadToSleep ()
         {
           stats->cpu_burst_max=burst_time;
         }
-        printf("cpuburstsumfrom sleep=%d\n",currentThread->cpu_burst_sum);
+       // printf("cpuburstsumfrom sleep=%d\n",currentThread->cpu_burst_sum);
     }
+  }
     while ((nextThread = scheduler->FindNextThreadToRun()) == NULL)
 	interrupt->Idle();	// no one to run, wait for an interrupt
         

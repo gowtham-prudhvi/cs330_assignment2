@@ -241,6 +241,15 @@ void
 Interrupt::Halt()
 {
     printf("Machine halting!\n\n");
+    stats->thread_count++;
+    if(stats->max_thread_exec < currentThread->exec_time) {
+    stats->max_thread_exec = currentThread->exec_time;
+   }
+   if(stats->min_thread_exec > currentThread->exec_time) {
+    stats->min_thread_exec = currentThread->exec_time;
+   }
+   stats->wait_time_total+=currentThread->wait_time_sum;
+    //ADD extra stats to print to Print()
     stats->Print();
     Cleanup();     // Never returns.
 }

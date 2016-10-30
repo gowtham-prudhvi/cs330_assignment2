@@ -32,7 +32,14 @@ NachOSscheduler::NachOSscheduler()
     readyThreadList = new List;
 
     //SJF
-    alpha = 0.5; 
+    alpha = 0.5;
+
+    quantum = 0;
+
+    int i;
+    for (i=0; i < MAX_THREAD_COUNT; i++) {
+        cpuCount[i] = 0;
+    } 
 } 
 
 //----------------------------------------------------------------------
@@ -59,7 +66,8 @@ NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
     DEBUG('t', "Putting thread %s with PID %d on ready list.\n", thread->getName(), thread->GetPID());
 
     thread->setStatus(READY);
-
+    thread->curr_wait_start=stats->totalTicks;
+    
     // SJF and non zero cpu burst
     if (schedulerCode == 2 && thread->prev_cpu_burst > 0) {
         double expected_cpu_burst = alpha * thread->prev_cpu_burst + (1 - alpha) * thread->prev_expected_cpu_burst;
@@ -77,8 +85,10 @@ NachOSscheduler::ThreadIsReadyToRun (NachOSThread *thread)
         // Insert the thread into the List using expected_cpu_burst
         readyThreadList->SortedInsert((void*)thread, expected_cpu_burst);
     }
-    else
+    else {
+        //printf("pid of thread = %d\n", thread->GetPID());
         readyThreadList->Append((void *)thread);
+    }
 }
 
 //----------------------------------------------------------------------
@@ -96,25 +106,25 @@ NachOSscheduler::FindNextThreadToRun ()
     if (schedulerCode <= 6)
         return (NachOSThread *)readyThreadList->Remove();
     else {
-        // if readyList is empty return NULL
-        if (readyList->first == NULL)
+        // if readyThreadList is empty return NULL
+        if (readyThreadList->first == NULL)
             return NULL;
 
         // get the thread with minimum priority value
-        // scan the entire readyList and update minThreadPtr accordingly
-        ListElement *minElementPtr = readyList->first;
+        // scan the entire readyThreadList and update minElementPtr accordingly
+        ListElement *minElementPtr = readyThreadList->first;
 
-        // temp variables are used to iterate through the readyList
-        ListElement *tempElementPtr = minThreadPtr;
-        Thread *tempThreadPtr = (Thread*)minElementPtr->item;
+        // temp variables are used to iterate through the readyThreadList
+        ListElement *tempElementPtr = minElementPtr;
+        NachOSThread *tempThreadPtr = (NachOSThread*)minElementPtr->item;
         int tempPriorityValue = tempThreadPtr->priority;
 
-        Thread *minThreadPtr = temp;
+        NachOSThread *minThreadPtr = tempThreadPtr;
         int minPriorityValue =  minThreadPtr->priority;
 
-        // iterate through readyList
+        // iterate through readyThreadList
         while (tempElementPtr != NULL) {
-            tempThreadPtr = (Thread*)tempElementPtr->item;
+            tempThreadPtr = (NachOSThread*)tempElementPtr->item;
             tempPriorityValue = tempThreadPtr->priority;
 
             if (tempPriorityValue < minPriorityValue) {
@@ -125,12 +135,12 @@ NachOSscheduler::FindNextThreadToRun ()
             tempElementPtr = tempElementPtr->next;
         }
 
-        // remove the min element from readyList
-        tempElementPtr = readyList->first;
+        // remove the min element from readyThreadList
+        tempElementPtr = readyThreadList->first;
         
         // if the minThread is the first then directly use default Remove()
         if (tempElementPtr == minElementPtr) {
-            return (Thread *)readyList->Remove();
+            return (NachOSThread *)readyThreadList->Remove();
         }
 
         ListElement *prevElementPtr = tempElementPtr;
@@ -139,9 +149,9 @@ NachOSscheduler::FindNextThreadToRun ()
             if(tempElementPtr == minElementPtr) {
                 prevElementPtr->next = tempElementPtr->next;
 
-                // if the min is last then update readyList last as prevElementPtr
-                if (tempElementPtr == readyList->last) {
-                    readyList->last = prevElementPtr;
+                // if the min is last then update readyThreadList last as prevElementPtr
+                if (tempElementPtr == readyThreadList->last) {
+                    readyThreadList->last = prevElementPtr;
                 }
             }
             prevElementPtr = tempElementPtr;
@@ -149,7 +159,7 @@ NachOSscheduler::FindNextThreadToRun ()
         }
 
         delete minElementPtr;
-        return minThread;
+        return minThreadPtr;
     }
 }
 
@@ -183,11 +193,14 @@ NachOSscheduler::Schedule (NachOSThread *nextThread)
 					    // had an undetected stack overflow
 
     currentThread = nextThread;		    // switch to the next thread
-    currentThread->setStatus(RUNNING);      // nextThread is now running
+    currentThread->setStatus(RUNNING); 
+    //stats->cpu_burst_count++;     // nextThread is now running
+    nextThread->wait_time_sum += stats->totalTicks-(nextThread->curr_wait_start);
+//    printf("wait_time_sum=%d\n",nextThread->wait_time_sum );
 
     nextThread->curr_cpu_burst_start=stats->totalTicks;
     currentThread->cpu_burst_count++;
-    printf("cpu_start=%d count=%d\t", currentThread->curr_cpu_burst_start,currentThread->cpu_burst_count);
+    //printf("cpu_start=%d count=%d\t", currentThread->curr_cpu_burst_start,currentThread->cpu_burst_count);
     
     DEBUG('t', "Switching from thread \"%s\" with pid %d to thread \"%s\" with pid %d\n",
 	  oldThread->getName(), oldThread->GetPID(), nextThread->getName(), nextThread->GetPID());

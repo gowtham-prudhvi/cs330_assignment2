@@ -38,7 +38,12 @@ class Statistics {
 
 
     //stats to display at the end
-
+    int thread_count=0;
+    double avg_wait;
+    int max_thread_exec=0;
+    int min_thread_exec=10000;
+    int avg_thread_exec=0;
+    int total_thread_exec=0;
     int cpu_burst_total=0;
     int cpu_burst_count=0;
     int cpu_burst_min=100000;

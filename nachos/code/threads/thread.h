@@ -91,12 +91,16 @@ class NachOSThread {
 					// is called
 
     // basic thread operations
-
-
+    bool yieldAt=false;
+    int start_time=0;
+    int exec_time=0;
     int cpu_burst_sum=0;
     int cpu_burst_count=0;
     int curr_cpu_burst_start=0;
-
+    int curr_wait_start;
+    int wait_time_sum=0;
+    int curr_block_start=0;
+    int block_time=0;
     int prev_cpu_burst=0;
     double prev_expected_cpu_burst=0.0;
     
